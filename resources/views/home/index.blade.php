@@ -1,0 +1,1 @@
+<a href="{{ $fbLoginUrl }}">Login with Facebook</a>

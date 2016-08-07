@@ -6,13 +6,13 @@ namespace App\Http\Controllers;
  * @package App\Http\Controllers
  *
  * @SWG\Swagger(
- *     basePath="/congreso-negocios/public/",
- *     host="localhost",
+ *     basePath="/ruffless/public/",
+ *     host="develop.com",
  *     schemes={"http"},
  *     @SWG\Info(
  *         version="1.0",
- *         title="Sample API",
- *         @SWG\Contact(name="Marco Raddatz", url="https://www.marcoraddatz.com"),
+ *         title="API",
+ *         @SWG\Contact(name="fersaavedra85@hotmail.com", url="https://abostudio.mx"),
  *     ),
  *     @SWG\Definition(
  *         definition="Error",

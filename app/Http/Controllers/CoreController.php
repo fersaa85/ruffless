@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 ini_set('max_execution_time', 0);
 
-
+use App;
 use Auth;
 use Config;
 use DB;
@@ -20,7 +20,28 @@ use URL;
 use Validator;
 use View;
 
+
 use Image;
+use Facebook;
+use Twitter;
+
+
+use App\User;
+use App\Models\UserInfo;
+use App\Models\Team;
+use App\Models\Mathces;
+use App\Models\Season;
+use App\Models\FootballPools;
+use App\Models\CodeByMathces;
+use App\Models\Group;
+use App\Models\GroupByUsers;
+use App\Models\Point;
+
+
+use  App\Http\Controllers\SecureController;
+use  App\Http\Controllers\DBController;
+
+
 
 
 class CoreController extends Controller
@@ -28,14 +49,505 @@ class CoreController extends Controller
     public $imgWidth = 250;
     public $imgHeight = 200;
 
+    public $fbFanPage = '894252303983825'; //ID DE LA FAN PAGES A BUSCAR CON ME GUSTA
+    public $twFriendID = '175491448'; //ID DE LA CUENTA DE TWITTER QUE DEBES SEGUIR
+
+
+    public $secure;
+    public $db;
+
+    public $now;
 
     public function __construct(){
+      
+       // $this->_getViewsShare();
+        $this->secure = new SecureController();
+        $this->db = new DBController();
 
-        $this->_getViewsShare();
+
+        $this->now  =  date("Y-m-d H:i:s");
+    }
+
+    public function getNameByUser(){
+
+        return Auth::user()->userinfo->name ." ". Auth::user()->userinfo->last_name;
+    }
+
+    public function getUser($id){
+
+        $user = User::findOrFail($id);
+        $user->offsetSet('userinfo', $user->userinfo);
+        return $user;
+    }
+
+    
+    
+    public function getInvite(){
+
+        GroupByUsers::where('user_id', '=', Auth::user()->id)->where()->get();
+        
+    }
+    
+    
+    public function getFootballPoolsResults($result_matche, $team_id){
+       
+       return FootballPools::where('result_matche', '=', $result_matche)->where('team_id', '=', $team_id)->get();
+        
+    }
+
+
+    public function getCodeMathcesFootballPoolsByUser(){
+
+       $getMathces =  $this->getMathces();
+        $merged = array();
+        foreach( $getMathces as $value){
+
+            $CodeByMathces = CodeByMathces::where('user_id', '=', Auth::user()->id)
+                ->where('mathce_id', '!=', 0)
+                ->orWhere('mathce_id', '=', $value->loca_id)
+                ->orWhere('mathce_id', '=', $value->visit_id)
+                ->first();
+
+            $FootballPools =  FootballPools::where('user_id', '=', Auth::user()->id)->where('mathce_id', '=', $CodeByMathces->mathce_id)->first();
+            $CodeByMathces->offsetSet('footballpools', $FootballPools );
+
+            $merged[] = $CodeByMathces;
+            //$merged = empty($merged)? $CodeByMathces :  $merged->merge($CodeByMathces);
+        }
+
+
+      return $merged;
 
     }
 
 
+    public function getRanking(){
+        $ranking = array();
+
+        DB::statement(DB::raw('set @rownum=0'));
+        $ranking['ranking'] = UserInfo::select([ DB::raw('@rownum := @rownum + 1 AS rownum'),
+                                    'users_info.*',
+                                   ])
+                                    ->orderBy('points', 'DESC')
+                                    ->get();
+
+
+        DB::statement(DB::raw('set @rownum=0'));
+        $ranking['ranking_last15days'] = UserInfo::select([ DB::raw('@rownum := @rownum + 1 AS rownum'),
+                                                                'users_info.*',
+                                                            ])
+                                                    ->where(DB::raw("DATE_SUB('{$this->now}', INTERVAL 15 DAY)"), '<', 'users_info.updated_at')
+                                                    ->orderBy('points', 'DESC')
+                                                    ->get();
+
+
+
+       $ranking['ranking_me'] = $ranking['ranking']->only(['user_id', Auth::user()->id]);
+
+
+
+      return  $ranking;
+
+
+
+    }
+    
+    public function getRankingGroup($group_id){
+        $ranking = array();
+        $array = $this->getGroupByUsers($group_id);
+
+        DB::statement(DB::raw('set @rownum=0'));
+        $filelds = ['users_info.*', DB::raw('SUM(.points.points) as total'), DB::raw('@rownum := @rownum + 1 AS rownum') ];
+        $ranking['ranking'] = Point::join('users_info', 'users_info.user_id', '=', 'points.user_id')
+                                    ->whereIn('points.user_id', $array)
+                                    ->orderBy('users_info.points', 'DESC')
+                                    ->groupBY('points.user_id')
+                                    ->select($filelds)
+                                    ->get();
+
+
+
+
+
+
+        DB::statement(DB::raw('set @rownum=0'));
+        $filelds = ['users_info.*', DB::raw('SUM(.points.points) as total'), DB::raw('@rownum := @rownum + 1 AS rownum') ];
+        $ranking['ranking_last7days'] = Point::join('users_info', 'users_info.user_id', '=', 'points.user_id')
+                                            ->whereIn('points.user_id', $array)
+                                            ->where(DB::raw("DATE_SUB('{$this->now}', INTERVAL 7 DAY)"), '<', 'points.updated_at')
+                                            ->orderBy('total', 'DESC')
+                                            ->groupBY('points.user_id')
+                                            ->select($filelds)
+                                            ->get();
+
+
+        foreach ($ranking['ranking_last7days'] as $key => $value) {
+            $i = $key;
+            $ranking['ranking_last7days'][$key]->rownum = ++$i;
+        }
+
+        return $ranking;
+    }
+
+
+     public function getCurrentSeason(){
+         return Season::where('season', '>=', $this->now )->orderBy('id', 'DESC')->first();
+     }
+
+    public function getMathcesByUser(){
+
+        $array = FootballPools::where('user_id', '=', Auth::user()->id)->get(['mathce_id'])->toArray();
+        $Season = $this->getCurrentSeason();
+
+        $count = CodeByMathces::where('user_id', '=',  Auth::user()->id)->where('season_id', '=', $Season->id)->count();
+        $take = ($count>=2)? 16 : 8;
+
+        return Mathces::where('season_id', '=', $Season->id)
+                        ->where('date_mathce', '>=', $this->now )
+                        ->whereNotIn('id',$array)
+                        ->take($take)
+                        ->get();
+        
+    }
+
+    public function getMathces($params = null){
+       $params['date'] = isset($params['date'])? $params['date'] : false;
+
+       $Season =  $this->getCurrentSeason();
+       $Mathces = Mathces::where('season_id', '=', $Season->id);
+       if( $params['date'] ) {
+           $Mathces->where('date_mathce', '>=', $this->now);
+       }
+       $Mathces = $Mathces ->get();
+
+        return $Mathces ;
+    }
+
+
+
+    public function getGroups(){
+
+       $GroupByUsers = GroupByUsers::where('user_id', '=', Auth::user()->id)->where('approved', '=', 1)->get();
+        foreach( $GroupByUsers as $key => $value){
+            $GroupByUsers[$key]->offsetSet('group', $value->group);
+
+            $array = $this->getGroupByUsers();
+            $GroupByUsers[$key]->offsetSet('userinfo',  UserInfo::whereIn('user_id',  $array )->get());
+        }
+
+        return $GroupByUsers;
+    }
+    
+    public function getGroupsPending(){
+
+        return GroupByUsers::where('user_id', '=', Auth::user()->id)->where('approved', '=', 0)->get();
+    }
+
+    public function getGroupByUsers($group_id){
+        return  GroupByUsers::where('group_id', '=', $group_id)->where('approved', '=', 1)->get(['user_id'])->toArray();
+    }
+
+    
+    
+    
+    public function getTimeLine(){
+        $array = array();
+
+        $get =  $this->getTwTimeline();
+       //$get2= $this->getFbTimeLine("Ruflesevida", Auth::user()->access_token);
+        return   $get;
+    }
+    
+
+    /******************************
+     * SHARE SOCIAL NETWORK and METATAGS OPEN GRAND
+     ******************************/
+    /* getFacebookShare
+	 *
+	 * esta funcion permite construye el link para compartir una url en faccebook
+	 *
+	 * params
+	 * @$url
+	 *
+	 * html
+	 * <a href="javascript: void(0);" onclick="window.open('{__NEWS_SHARE_FACEBOOK__}','popupShare', 'toolbar=0, status=0, width=650, height=450');">
+			<img src="images/icon-share-facebook.png" height="18" />
+	  </a>
+	*/
+    public function getFacebookShare($url = null){
+        return  "http://www.facebook.com/sharer.php?u={$url}";
+    }
+
+
+    /* getTwitterShare
+	 *
+	 * genera el link para compartir en twitter
+	 *
+	 * params
+	 * @$twitter
+	 * @url
+	 * @text
+	 *
+	 * html
+	 * <a href="javascript: void(0);" onclick="window.open('{__NEWS_SHARE_TWITTER__}','popupShare', 'toolbar=0, status=0, width=450, height=250');">
+			<img src="images/icon-share-twitter.png" height="18" />
+	   </a>
+	*/
+    public function getTwitterShare($url = null, $text = null){
+        $twitter = "Ruffles";
+        $text = trim($text);
+
+        $share  = "https://twitter.com/share?";
+        $share .= "url={$url}&";
+        $share .= "via={$twitter}&";
+        $share .= "text={$text}&";
+        //$share .= "related=twitterapi twitter&";
+        //$share .= "hashtags=ejemplo ejemplo2&";
+
+
+        return $share;
+
+
+    }
+
+
+    /* getGooglePlusShare
+	 *
+	 * esta funcion permite construye el link para compartir en google+/google plus
+	 *
+	 * params
+	 * @$url
+	 *
+	 * html
+	 * <a href="javascript: void(0);" onclick="window.open('{__NEWS_SHARE_GOOGLE__}','popupShare', 'toolbar=0, status=0, width=650, height=250');">
+		<img src="images/icon-share-google.png" height="18" />
+	   </a>
+	*/
+    public function getGooglePlusShare($url = null){
+
+         return  "https://plus.google.com/share?url={$url}";
+
+    }
+
+
+
+
+
+
+
+    /**************
+     * API TWITTER
+     **************/
+    
+    public function twGetFirendsIDs($username){
+
+        $get = Twitter::get('friends/ids.json', ['screen_name'=>$username]);
+        if( empty(Auth::user()->userinfo->points_twitter)  ) {
+            if (in_array($this->twFriendID, $get->ids)) {
+                $this->db->twGetFirendsIDs(100);
+
+                $getCurrentSeason = $this->getCurrentSeason();
+                $this->db->insertPoints(100, 'followyou',  $getCurrentSeason->id );
+            }
+        }
+        
+    }
+    
+    
+    public function getTwTimeline(){
+
+//https://api.twitter.com/1.1/followers/list.json?cursor=-1&screen_name=twitterdev&skip_status=true&include_user_entities=false
+//cursor=-1&screen_name=twitterdev&skip_status=true&include_user_entities=false
+       /* try
+        {
+            $response = Twitter::get('friends/ids.json', ['screen_name'=>'ruffles']);
+        }
+        catch (Exception $e)
+        {
+            echo "LOGS <br /><br />";
+            dd(Twitter::logs());
+        }
+
+        dd($response);
+            */
+
+
+        return  Twitter::getUserTimeline(['screen_name' => 'ruffles', 'count' => 100, 'format' => 'object']);
+
+    }
+    
+    
+    
+
+    
+    
+    
+    /**********************
+     * GET FAN PAGES
+     ********************/
+    
+    public function fbGetLikeFanPages($token, $return=null){
+        $get =  Facebook::get("http://graph.facebook.com/v2.7/me/likes/{$this->fbFanPage}", $token);
+        $get = $get->getGraphObject();
+
+        if( empty(Auth::user()->userinfo->points_facebook)  ) {
+            if ( !empty($get->count() )) {
+                $this->db->fbGetLikeFanPages(100);
+
+                $getCurrentSeason = $this->getCurrentSeason();
+                $this->db->insertPoints(100, 'fanpages',  $getCurrentSeason->id );
+            }
+        }
+
+    }
+
+    public function getFbTimeLine(/*(int)or(string)*/$page_id=null, $token=null){
+        //$fb = App::make('SammyK\LaravelFacebookSdk\LaravelFacebookSdk');  //$user_id = (int)$user_id ;
+        //$get = $fb->get("http://graph.facebook.com/v2.6/{$user_id}/picture", $token);
+
+        $get = Facebook::get("https://graph.facebook.com/v2.7/Ruflesevida/feed", Auth::user()->access_token);
+
+        dd($get->getGraphObject());
+    }
+
+
+
+    /****************
+     * FACEBOOK LOGUIN WITH laravel-facebook-sdk
+     ****************/
+    
+    public function fbLoginUrl($permissions = array(), $callback=null){
+        $permissions = empty($permissions)? ['email'] : $permissions;  // Optional permissions
+        $fb = App::make('SammyK\LaravelFacebookSdk\LaravelFacebookSdk'); //use App;
+        return $fb->getLoginUrl($permissions, $callback);
+    }
+
+
+
+    
+    public function fbCallback(){
+        $fb = App::make('SammyK\LaravelFacebookSdk\LaravelFacebookSdk'); //use App;
+        // Obtain an access token.
+        try {
+            $token = $fb->getAccessTokenFromRedirect();
+        } catch (Facebook\Exceptions\FacebookSDKException $e) {
+            dd($e->getMessage());
+        }
+
+        // Access token will be null if the user denied the request
+        // or if someone just hit this URL outside of the OAuth flow.
+        if (! $token) {
+            // Get the redirect helper
+            $helper = $fb->getRedirectLoginHelper();
+
+            if (! $helper->getError()) {
+                abort(403, 'Unauthorized action.');
+            }
+
+            // User denied the request
+            dd(
+                $helper->getError(),
+                $helper->getErrorCode(),
+                $helper->getErrorReason(),
+                $helper->getErrorDescription()
+            );
+        }
+
+        if (! $token->isLongLived()) {
+            // OAuth 2.0 client handler
+            $oauth_client = $fb->getOAuth2Client();
+
+            // Extend the access token.
+            try {
+                $token = $oauth_client->getLongLivedAccessToken($token);
+            } catch (Facebook\Exceptions\FacebookSDKException $e) {
+                dd($e->getMessage());
+            }
+        }
+
+        $fb->setDefaultAccessToken($token);
+
+        // Save for later
+        Session::put('fb_user_access_token', (string) $token);
+
+        // Get basic info on the user from Facebook.
+        try {
+            $response = $fb->get('/me');///me?fields=id,name,email
+        } catch (Facebook\Exceptions\FacebookSDKException $e) {
+            dd($e->getMessage());
+        }
+
+        // Convert the response to a `Facebook/GraphNodes/GraphUser` collection
+        $facebook_user = $response->getGraphUser();
+
+
+        dd( $facebook_user);
+        // Create the user if it does not exist or update the existing entry.
+        // This will only work if you've added the SyncableGraphNodeTrait to your User model.
+        $user = App\User::createOrUpdateGraphNode($facebook_user);
+
+        // Log the user into Laravel
+        Auth::login($user);
+
+        return redirect('/')->with('message', 'Successfully logged in with Facebook');
+        
+    }
+    
+    public function fbUserAccessToken($token=null) {
+        $fb = App::make('SammyK\LaravelFacebookSdk\LaravelFacebookSdk'); //use App;
+        $token = empty($token)? Session::get('fb_user_access_token') : $token;
+
+
+        $fields = '?fields=id,name,email,timezone,middle_name,location,locale,link,last_name,gender,first_name,birthday,age_range';
+        $get = $fb->get("/me{$fields}", $token );
+        $get = $get->getGraphUser();
+
+       return $this->insertOrUpdtateAccessToken($get, $token);
+
+    }
+    
+    public function insertOrUpdtateAccessToken($get, $token){
+        $User = User::where('facebook_user_id', '=', $get->getId())->first();
+
+        $array = ['name'=>$get->getFirstName(),
+                'last_name'=>$get->getLastName(),
+                'user_id'=>$User->id,
+                'photo'=>"http://graph.facebook.com/v2.6/{$get->getId()}/picture",
+                 ];
+
+
+        if ( empty($User->access_token) or
+            ($User->access_token != $token) ){
+                $User->access_token = $token;
+                $User->save();
+                $User->userinfo()->insert($array);
+        }
+        $User->userinfo()->update($array);
+
+        $User->offsetSet('userinfo', $User->userinfo);
+        return $User;
+    }
+
+
+    public function getfbUserPicture(/*(int)*/$user_id, $token){
+        //$fb = App::make('SammyK\LaravelFacebookSdk\LaravelFacebookSdk');  //$user_id = (int)$user_id ;
+        //$get = $fb->get("http://graph.facebook.com/v2.6/{$user_id}/picture", $token);
+
+
+       $get =  Facebook::get("https://graph.facebook.com/v2.7/{$user_id}/picture", $token);
+        dd($get->getGraphObject());
+    }
+
+
+    public function getfbUserFriends(){
+
+        //$get = Facebook::get("/me", Auth::user()->access_token);
+
+
+        $get =  Facebook::get("https://graph.facebook.com/v2.7/me/friends", Auth::user()->access_token);
+        //dd($get->getGraphObject());
+        dd($get->getGraphUser());
+    }
 
 
     /****************
@@ -261,36 +773,6 @@ class CoreController extends Controller
     }
 
 
-    /* is_json
-     *
-     * determina cuando el objeto ha respondido un objeto json.
-     *
-     *
-     * @method
-     * public
-     *
-     * @params
-     * $object	=> object [ obligatorio, objeto debueto, puede ser un jeson o un objeto de query ]
-     *
-     *
-     * @return
-     * bool
-     *
-     * @author
-     * fersaavedra85@hotmail.com
-     *
-     */
-
-    function is_json($object) {
-
-        if( !isset($object->id) ) {
-
-            //var_dump($object);
-            return isset($object->getData()->success) ? true : false;
-        }
-        return false;
-    }
-
     /* recoverPassword
      *
      * Recuperar el password del usuraio
@@ -391,7 +873,7 @@ class CoreController extends Controller
 
 
     /**************
-     ** SESSIONS -> VIEWS
+     ** SESSIONS -> VIEWS SHARE
      **************/
 
     /* _getViewsShare
@@ -477,10 +959,174 @@ class CoreController extends Controller
 
 
     /***************
-     * SELECT HTML
+     * LIST TABLE / SELECT HTML
+     *
+     *
      ***************/
+    /* _getListTable
+     *
+     *  esta funcion pertimte agrrupar todas las TABLE::list()
+     *  de las tablas en un una funcion y mandarlas llamar
+     *  en base a sus parametros, tabaja en conjunto con otras
+     *  funciones,
+     *
+     * @NOTA
+     * esta funcion requiere de asignar los valores MANUALMENTE
+     * para reocuparlas  en el sistema
+     *
+     * @method
+     * prirvate
+     *
+     * @params
+     * $params => array [ table => (string -> obligatorio) alias con el que se guarda la tabla
+     *                  ]
+     *
+     *
+     * @return
+     * array/json
+     *
+     *
+     * @author
+     * fersaavedra85@hotmail.com
+     *
+     *
+     */
 
-    /* _setEmptySelectHTML
+     private function _getListTable($table=null){
+         $lists = array();
+         $lists['team'] = Team::where('id','<>', '');
+         if( isset($table) ){ return $lists["{$table}"]; }
+         return null;
+     }
+
+
+    /* _getList
+     *
+     *  esta funcion es la base para utilizar la funcion de list
+     * y retornar diferentes resultados del listado en array
+     * indicando la $key => $value, nos retorna un array o un json
+     * deacuerdo al tipo de peticion
+     * AJAX json
+     * HTTP array/json
+     *
+     * @NOTA
+     * esta funcion es la estructura base se debe personalizar
+     * indicando la tabla/modelo respectivo en cada caso
+     *
+     * @method
+     * public
+     *
+     * @params
+     * $params => array [ table => (string -> obligatorio) alias con el que se guarda la tabla
+     *                    id => (string) indicamaso un id para filtrar
+     *                    where => (string) indicamos el camo en el cual filtramos
+     *                    return => (string) permite forzar la respuesta en json
+     *                    array => (boolean) el list te lo agrupa en un array
+     *                    empty => (array) indica el array de inico del lists
+     *                    selected => (string) indica indice con propiedad 'selected', para multiples 'selected' separar con comas
+     *                    new_array => (boolean) generar un nuevo array dividiendo los evelmentos en $key => $value
+     *                    order => (array) orden los valores del lists array('name'=>'ASC/DESC' )
+     *                   ]
+     *
+     *
+     * @return
+     * object
+     *
+     *
+     * @author
+     * fersaavedra85@hotmail.com
+     *
+     *
+     */
+    public function _getList($params = null){
+        //$params = array('table'=>'TABLE',"id" => 1, "where" => "", "return" => "json", "array" => true, "empty"=>array(""=>--selecionar--), 'selected'=>'TABLE_id'=>'1');
+        $params["return"] = isset( $params["return"] )? $params["return"] : "default" ;
+        $params["table"] = isset($params["table"])? $params["table"] : null;
+        $params["order"] = isset($params['order'])? $params["order"] : ['name'=>'ASC'];
+        $params["selected"] = isset($params["selected"])? ["{$params["table"]}_id"=>$params["selected"]] : ["{$params["table"]}_id"=>null];
+
+
+        $lists = $this->_getListTable($params["table"]);
+        if( empty($lists) ){ dd("NO SE HA SELECONADO UNA TABLA y/o NO ES VALIDA") ;}
+        if( isset($params["id"]) ){ $lists->where("{$params["where"]}", '=', $params["id"]); }
+        if( isset($params["order"]) ){ $order = $this->_getFieldOrderBy($params["order"]); $lists->orderBy("{$order}", '=', $params["order"]["{$order}"]); }
+        $lists = $lists->lists("name", "id");
+
+        $this->_getSelectedSelectHTML($params["selected"]);
+        if( isset($params["array"]) ){ $lists = $lists->toArray();  }
+        if( isset($params["empty"]) ){ $this->_setEmptySelectHTML($params["empty"], $this->getIsArray($lists)); }
+        if( isset($params["new_array"]) ){ $this->_getNewArrayKeyValue($lists); }
+          
+
+        if ( $params["return"] == "json") { return Response::json(["lists"=> $lists, 200 ]); }
+        return $lists;
+    }
+
+
+    /* _getFieldOrderBy
+   *
+   * regresa el campo por el cual se ordena el lists
+   * este puede ser cualquier field de la tabla
+   *
+   *
+   * @method
+   * private
+   *
+   *
+   * @params
+   * $order => array [ (array) orden los valores del lists array('name'=>'ASC/DESC' ) ]
+
+   *
+   *
+   * @return
+   * string
+   *
+   *
+   * @author
+   * fersaavedra85@hotmail.com
+   *
+   */
+    private function _getFieldOrderBy($order){
+        $order = array_keys($order);
+        return $order[0];
+    }
+
+    /* _getNewArrayKeyValue -> &
+    *
+    * genera un nuevo array con los elementos
+    * dividiendo en $key => $value y $key => $value ,
+    * por defecto se asignas las claves array('id', 'name')
+    *
+    *
+    * @method
+    * public
+    *
+    *
+    * @params
+    * $empty => array [ array en formato array( "" => --selecionar-- ) ]
+    * $array => array [ array/lista de elemtos a concatenar ]
+    *
+    *
+    * @return
+    * array
+    *
+    *
+    * @author
+    * fersaavedra85@hotmail.com
+    *
+    */
+    private function &_getNewArrayKeyValue(&$lists){
+        $array = array();
+        foreach($lists as $key => $value){
+            $array[] = array("id" => $key, "name"=>$value);
+        }
+        $lists  = $array;
+        return $lists;
+        
+    }
+    
+
+    /* _setEmptySelectHTML -> &
      *
      * agrega un elemento vacio a un elemeto select  <select></select> ,
      * para validar que el campo, y que  lleve una
@@ -503,10 +1149,9 @@ class CoreController extends Controller
      * fersaavedra85@hotmail.com
      *
      */
-    public function _setEmptySelectHTML($empty, $array){
-
-        return  $empty +  $array;
-
+    public function &_setEmptySelectHTML($empty, &$array){
+       $array = $empty + $array;
+       return $array;
     }
 
 
@@ -514,7 +1159,7 @@ class CoreController extends Controller
 
 
 
-    /* _getSelectedSelectHTML
+    /* _getSelectedSelectHTML -> share
      *
      * indica en un elemeto select <select></select>
      * si un elemnto debe estar marcado por default selected
@@ -628,6 +1273,37 @@ class CoreController extends Controller
      * UTILS PUBLIC
      ****************/
 
+
+
+    /* is_json
+     *
+     * determina cuando el objeto ha respondido un objeto json.
+     *
+     *
+     * @method
+     * public
+     *
+     * @params
+     * $object	=> object [ obligatorio, objeto debueto, puede ser un json o un objeto de query ]
+     *
+     *
+     * @return
+     * bool
+     *
+     * @author
+     * fersaavedra85@hotmail.com
+     *
+     */
+
+    private  function is_json($object) {
+
+        if( !isset($object->id) ) {
+            return isset($object->getData()->success) ? true : false;
+        }
+        return false;
+    }
+
+
     /* usernameIsEmail
      *
      * determina siel nombre de usurio es un email, o un username
@@ -690,76 +1366,6 @@ class CoreController extends Controller
 
     }
 
-
-
-
-
-    /* _getListTable
-     *
-     *  esta funcion es la base para utilizar la funcion de list
-     * y retornar diferentes resultados del listado en array
-     * indicando la $key => $value, nos retorna un array o un json
-     * deacuerdo al tipo de peticion
-     * AJAX json
-     * HTTP array/json
-     *
-     * @NOTA
-     * esta funcion es la estructura base se debe personalizar
-     * indicando la tabla/modelo respectivo en cada caso
-     *
-     * @method
-     * public
-     *
-     * @params
-     * $params => array [ id => (string) indicamaso un id para filtrar
-     *                    where => (string) indicamos el camo en el cual filtramos
-     *                    return => (string) permite forzar la respuesta en json
-     *                    array => (boolean) el list te lo agrupa en un array
-     *                  ]
-     *
-     *
-     * @return
-     * array/json
-     *
-     *
-     * @author
-     * fersaavedra85@hotmail.com
-     *
-     *
-     */
-    public function _getListTable($params = null){
-        //$params = array("id" => 1, "where" => "", "return" => "json", "array" => true);
-        $params["return"] = isset( $params["return"] )? $params["return"] : "default" ;
-
-
-        if( isset($params["id"]) ){
-            $lists = TABLE::where("{$params["where"]}", '=', $params["id"])->lists("name", "id");
-        }else{
-            $lists = TABLE::lists("name", "id");
-        }
-
-
-        if( isset($params["array"]) ){
-            $lists = $lists->toArray();
-        }
-
-
-        if( isset($params["new_array"]) ){
-            $array = array();
-            foreach($lists as $key => $value){
-                $array[] = array("id" => $key, "name"=>$value);
-            }
-            $lists  = $array;
-        }
-
-
-        if ( $params["return"] == "json") {
-            return Response::json(array("success"=>true,
-                "lists"=> $lists ));
-        }
-
-        return $lists;
-    }
 
 
 
@@ -1344,6 +1950,57 @@ class CoreController extends Controller
         return trim( preg_replace('/\s+/', ' ', utf8_decode($string)) );
 
     }
+
+
+
+
+
+
+
+
+
+
+    /****************
+     * FUCNCIONES , VARIABES, RETURNS
+     *
+     * POR REFERENCIA
+     *
+     ****************/
+
+   /* getIsArray -> &
+   *
+   *  POR REFERECNIA
+   *  Evalua si la variable es un array si no lo convierte en uno
+   *
+   *
+   * @method
+   * private
+   *
+   * @params
+   * $array	=> object [ obligatorio, objeto debueto, puede ser un json o un objeto de query ]
+   *
+   *
+   * @return -> &
+   * array
+   *
+   * @author
+   * fersaavedra85@hotmail.com
+   *
+   */
+   private function &getIsArray(&$array){
+        if(!is_array($array)){
+            $array = $array->toArray();
+            return $array;
+        }
+        return $array;
+    }
+
+
+
+
+
+
+
 
 
 

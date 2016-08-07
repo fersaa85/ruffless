@@ -165,6 +165,7 @@ return [
 
         SammyK\LaravelFacebookSdk\LaravelFacebookSdkServiceProvider::class,
 
+        'Thujohn\Twitter\TwitterServiceProvider',
 
     ],
 
@@ -218,6 +219,8 @@ return [
         'Excel' => Maatwebsite\Excel\Facades\Excel::class,
 
         'Facebook' => SammyK\LaravelFacebookSdk\FacebookFacade::class,
+
+        'Twitter' => 'Thujohn\Twitter\Facades\Twitter',
     ],
 
 ];

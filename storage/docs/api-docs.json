@@ -1,33 +1,754 @@
 {
     "swagger": "2.0",
     "info": {
-        "title": "Sample API",
+        "title": "API",
         "contact": {
-            "name": "Marco Raddatz",
-            "url": "https://www.marcoraddatz.com"
+            "name": "fersaavedra85@hotmail.com",
+            "url": "https://abostudio.mx"
         },
         "version": "1.0"
     },
-    "host": "localhost",
-    "basePath": "/congreso-negocios/public/",
+    "host": "develop.com",
+    "basePath": "/ruffless/public/",
     "schemes": [
         "http"
     ],
     "paths": {
-        "api/dashboard": {
-            "get": {
+        "api/dashboard/login": {
+            "post": {
                 "tags": [
-                    "dashboard"
+                    "login"
                 ],
-                "summary": "Display a listing of the resource.",
-                "description": "Returns dashboard overview.",
-                "operationId": "api.dashboard.index",
+                "summary": "Loguin app",
+                "description": "Loguin app.",
+                "operationId": "api.dashboard.login",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
                 "produces": [
+                    "application/xml",
                     "application/json"
+                ],
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "formData",
+                        "description": "FB token access",
+                        "required": true,
+                        "type": "string"
+                    }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Dashboard overview."
+                        "description": "Login success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            }
+        },
+        "api/dashboard/profile/{id}": {
+            "get": {
+                "tags": [
+                    "profile"
+                ],
+                "summary": "getProfile",
+                "description": "Recupera el perfil del usuario.",
+                "operationId": "api.dashboard.getProfile",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/xml",
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            }
+        },
+        "api/dashboard/profile": {
+            "post": {
+                "tags": [
+                    "profile"
+                ],
+                "summary": "postProfile",
+                "description": "Actuliza la informacion del perfil del usuario.",
+                "operationId": "api.dashboard.postProfile",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/xml",
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "formData",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "email",
+                        "in": "formData",
+                        "description": "email del usuario",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "name",
+                        "in": "formData",
+                        "description": "nombre del usuario",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "last_name",
+                        "in": "formData",
+                        "description": "Apellido del usuario",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "phone",
+                        "in": "formData",
+                        "description": "Telefono del usuario",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "phone2",
+                        "in": "formData",
+                        "description": "Telefono secundario",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "email2",
+                        "in": "formData",
+                        "description": "Email secundario",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "password",
+                        "in": "formData",
+                        "description": "Password",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "team_id",
+                        "in": "formData",
+                        "description": "Equipo favorito",
+                        "required": false,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            }
+        },
+        "api/dashboard/join-facebook/{id}": {
+            "get": {
+                "tags": [
+                    "profile"
+                ],
+                "summary": "getJoinFacebook",
+                "description": "Busca si el usuario se ha suscrito a la fanpages y le da 100 puntos.",
+                "operationId": "api.dashboard.getJoinFacebook",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/xml",
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            }
+        },
+        "api/dashboard/join-twitter/{id}": {
+            "get": {
+                "tags": [
+                    "profile"
+                ],
+                "summary": "getJoinTwitter",
+                "description": "Busca si el usuario se es seguidor en twitter y le da 100 puntos.",
+                "operationId": "api.dashboard.getJoinTwitter",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/xml",
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            }
+        },
+        "api/dashboard/codes": {
+            "post": {
+                "tags": [
+                    "reto"
+                ],
+                "summary": "postCodes",
+                "description": "Ingresa los codigos de participacion, y los quema(desactva), para que solo se utilicen una vez",
+                "operationId": "api.dashboard.postCodes",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/xml",
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "formData",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "code",
+                        "in": "formData",
+                        "description": "Codigo de accesos, comparados contra la base",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            }
+        },
+        "api/dashboard/participates": {
+            "post": {
+                "tags": [
+                    "reto"
+                ],
+                "summary": "postParticipates",
+                "description": "Ingresa los equipos y pronosticos del reto por temporada",
+                "operationId": "api.dashboard.postParticipates",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/xml",
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "formData",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "tie[]",
+                        "in": "query",
+                        "description": "Empates selcecionados enviar en formato (array) en formato (mathce_id-tie)",
+                        "required": false,
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi"
+                    },
+                    {
+                        "name": "local[]",
+                        "in": "query",
+                        "description": "Empates selcecionados enviar en formato (array) en formato (mathce_id-local_id)",
+                        "required": false,
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi"
+                    },
+                    {
+                        "name": "visit[]",
+                        "in": "query",
+                        "description": "Empates selcecionados enviar en formato (array) en formato (mathce_id-visit_id)",
+                        "required": false,
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            }
+        },
+        "api/dashboard/share": {
+            "post": {
+                "tags": [
+                    "reto"
+                ],
+                "summary": "postShare",
+                "description": "Ingresa los equipos y pronosticos del reto por temporada",
+                "operationId": "api.dashboard.postShare",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "formData",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "share",
+                        "in": "query",
+                        "description": "Tipo de red en donde se va a compartir, por compartir un ememnto te da puntos por elemento",
+                        "required": true,
+                        "type": "string",
+                        "enum": [
+                            "facebook",
+                            "twitter"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            }
+        },
+        "api/dashboard/ranking/{$id}": {
+            "get": {
+                "tags": [
+                    "reto"
+                ],
+                "summary": "getRanking",
+                "description": "Regresa el ranquin, general individual y por quincena.",
+                "operationId": "api.dashboard.getRanking",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            }
+        },
+        "api/dashboard/group": {
+            "get": {
+                "tags": [
+                    "grupos"
+                ],
+                "summary": "getGroup",
+                "description": "Regresa los grupos a los que le usuario pertenece , asi como los amigos confirmados .",
+                "operationId": "api.dashboard.getGroup",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "grupos"
+                ],
+                "summary": "postGroup",
+                "description": "Regresa el ranquin, general individual y por quincena.",
+                "operationId": "api.dashboard.postGroup",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "grupos"
+                ],
+                "summary": "deleteGroup",
+                "description": "Regresa el ranquin, general individual y por quincena.",
+                "operationId": "api.dashboard.deleteGroup",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "group_id",
+                        "in": "query",
+                        "description": "group_id del grupo que se desea eliminar",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            }
+        },
+        "api/dashboard/invite": {
+            "get": {
+                "tags": [
+                    "grupos"
+                ],
+                "summary": "getInvite",
+                "description": "los grupos a los que haz sido invitado.",
+                "operationId": "api.dashboard.getInvite",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "grupos"
+                ],
+                "summary": "putInvite",
+                "description": "Confirma si el usuario quiere pertenecer al grupo.",
+                "operationId": "api.dashboard.putInvite",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "group_by_user_id",
+                        "in": "query",
+                        "description": "grupo al que se esta invitando al usuario",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "grupos"
+                ],
+                "summary": "postInvite",
+                "description": "Regresa el ranquin, general individual y por quincena.",
+                "operationId": "api.dashboard.postInvite",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "description": "ID del usuario, amigo al que se desea inviatar al grupo",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "group_id",
+                        "in": "query",
+                        "description": "grupo al que se esta invitando al usuario",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "grupos"
+                ],
+                "summary": "deleteInvite",
+                "description": "Confirma si el usuario quiere pertenecer al grupo.",
+                "operationId": "api.dashboard.deleteInvite",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "group_by_user_id",
+                        "in": "query",
+                        "description": "grupo al que se esta invitando al usuario",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            }
+        },
+        "api/dashboard/ranking-group": {
+            "get": {
+                "tags": [
+                    "grupos"
+                ],
+                "summary": "getRankingGroup",
+                "description": "Regresa el rankig del grupo.",
+                "operationId": "api.dashboard.getRankingGroup",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "group_id",
+                        "in": "query",
+                        "description": "grupo_id, del cual se quiere conocer el ranking",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login success."
+                    },
+                    "401": {
+                        "description": "Unauthorized action."
+                    }
+                }
+            }
+        },
+        "api/dashboard/time-line": {
+            "get": {
+                "tags": [
+                    "timeline"
+                ],
+                "summary": "getTimeLine",
+                "description": "time line de facebook y twitter de ruffles.",
+                "operationId": "api.dashboard.getTimeLine",
+                "consumes": [
+                    "application/xml",
+                    "application/json",
+                    "application/x-www-form-urlencoded"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login success."
                     },
                     "401": {
                         "description": "Unauthorized action."
@@ -54,7 +775,7 @@
                 }
             }
         },
-        "Machine": {
+        "Code": {
             "required": [
                 "name"
             ],
@@ -65,6 +786,142 @@
                     "format": "string"
                 }
             }
+        },
+        "CodeByMathces": {
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "table": {
+                    "description": "",
+                    "type": "string",
+                    "format": "string"
+                }
+            }
+        },
+        "FootballPools": {
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "table": {
+                    "description": "",
+                    "type": "string",
+                    "format": "string"
+                }
+            }
+        },
+        "Group": {
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "table": {
+                    "description": "",
+                    "type": "string",
+                    "format": "string"
+                }
+            }
+        },
+        "GroupByUsers": {
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "table": {
+                    "description": "",
+                    "type": "string",
+                    "format": "string"
+                }
+            }
+        },
+        "Machine": {
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "table": {
+                    "type": "string",
+                    "format": "string"
+                }
+            }
+        },
+        "Mathces": {
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "table": {
+                    "description": "",
+                    "type": "string",
+                    "format": "string"
+                }
+            }
+        },
+        "Point": {
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "table": {
+                    "description": "",
+                    "type": "string",
+                    "format": "string"
+                }
+            }
+        },
+        "Season": {
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "table": {
+                    "description": "",
+                    "type": "string",
+                    "format": "string"
+                }
+            }
+        },
+        "Share": {
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "table": {
+                    "description": "",
+                    "type": "string",
+                    "format": "string"
+                }
+            }
+        },
+        "Team": {
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "table": {
+                    "description": "",
+                    "type": "string",
+                    "format": "string"
+                }
+            }
+        },
+        "UserInfo": {
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "table": {
+                    "description": "",
+                    "type": "string",
+                    "format": "string"
+                }
+            }
+        },
+        "User": {
+            "required": [
+                "name"
+            ]
         }
     }
 }
